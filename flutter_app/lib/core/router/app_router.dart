@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../modules/analysis/layout/home_page.dart';
 import '../../modules/analysis/layout/analysis_loading_page.dart';
 import '../../modules/analysis/layout/camera_capture_page.dart';
+import '../../modules/analysis/layout/chat_page.dart';
 import '../../modules/auth/layout/login_modal.dart';
 import '../../modules/auth/layout/register_modal.dart';
 import '../../modules/dashboard/layout/dashboard_page.dart';
@@ -22,6 +23,7 @@ class AppRoutes {
   static const String analysisLoading = '/analysis/loading';
   static const String analysisResult  = '/analysis/result';
   static const String dashboard       = '/dashboard';
+  static const String chat            = '/chat';
 
   // Navigate to analysis loading with job ID
   static String analysisLoadingWithJob(String jobId) =>
@@ -53,6 +55,9 @@ class AppRouter {
       case AppRoutes.analysisResult:
       case AppRoutes.dashboard:
         return _fade(const DashboardPage(), settings);
+
+      case AppRoutes.chat:
+        return _fade(const ChatPage(), settings);
 
       default:
         return _fade(const HomePage(), settings);

@@ -23,6 +23,7 @@ from api.v1.endpoints import (
     results,
     reports,
     websocket,
+    chat,
 )
 
 settings = get_settings()
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(analysis.router,  prefix=f"{prefix}/analyze",  tags=["Analysis"])
     app.include_router(results.router,   prefix=f"{prefix}/results",  tags=["Results"])
     app.include_router(reports.router,   prefix=f"{prefix}/report",   tags=["Reports"])
+    app.include_router(chat.router,      prefix=f"{prefix}/chat",     tags=["Chat"])
     app.include_router(websocket.router, prefix="/ws",                 tags=["WebSocket"])
 
     # ── Health check ───────────────────────────────────────────

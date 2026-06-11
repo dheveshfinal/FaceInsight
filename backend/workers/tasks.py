@@ -13,6 +13,8 @@
 import os
 import math
 import asyncio
+import time
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -55,7 +57,8 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
     """
     Full ML analysis pipeline. Runs synchronously inside Celery worker.
     """
-    logger.info(f"[Task {self.request.id}] Starting analysis: job_id={job_id}")
+    task_start = time.time()
+    logger.info(f"[Task {self.request.id}] ⏱️  Starting analysis: job_id={job_id}")
 
     db = _get_sync_session()
     try:
@@ -196,14 +199,18 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
             global _insight_face_app
             if _insight_face_app is None:
                 weights_dir = os.environ.get("ML_WEIGHTS_DIR", "/app/ml/weights")
-                logger.info(f"[Task {self.request.id}] Loading InsightFace model into memory...")
+                logger.info(f"[Task {self.request.id}] Loading InsightFace model into memory... (first time, may take 30-60s)")
+                start_time = time.time()
                 _insight_face_app = InsightApp(
                     name="buffalo_l",
                     root=weights_dir,
                     providers=["CPUExecutionProvider"],
                 )
                 _insight_face_app.prepare(ctx_id=-1)  # -1 = CPU
-                logger.info(f"[Task {self.request.id}] InsightFace model loaded successfully.")
+                elapsed = time.time() - start_time
+                logger.info(f"[Task {self.request.id}] ✅ InsightFace model loaded successfully (took {elapsed:.1f}s)")
+            else:
+                logger.info(f"[Task {self.request.id}] Using cached InsightFace model")
 
             img_bgr = np.array(pil_img)[:, :, ::-1]  # RGB→BGR
             faces   = _insight_face_app.get(img_bgr)
@@ -291,52 +298,18 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
             "confidence": pores_conf,
         })
 
-        # ── 6. Groq AI recommendations ────────────────────────
-        ai_recs: list[dict] = []
-
-        try:
-            from services.ai_service import AIService
-
-            ml_summary = {
-                "symmetry_score":     symmetry_score,
-                "golden_ratio_score": golden_ratio_score,
-                "skin_tone":          skin_tone_label,
-                "brightness":         brightness,
-                "age_estimate":       age_estimate,
-                "gender":             gender,
-                "face_shape":         face_shape,
-                "conditions":         [c["type"] for c in conditions],
-            }
-
-            ai = AIService()
-            suggestions = ai.generate_suggestions(ml_summary)
-
-            for i, s in enumerate(suggestions.get("skincare_suggestions", [])[:3]):
-                ai_recs.append({
-                    "category": "skincare",
-                    "title":    f"Skincare Tip {i + 1}",
-                    "desc":     s,
-                    "priority": i,
-                })
-            for i, s in enumerate(suggestions.get("lifestyle_suggestions", [])[:2]):
-                ai_recs.append({
-                    "category": "lifestyle",
-                    "title":    f"Lifestyle Tip {i + 1}",
-                    "desc":     s,
-                    "priority": i + 3,
-                })
-
-            logger.info(f"[Task {self.request.id}] Groq generated {len(ai_recs)} recommendations")
-        except Exception as e:
-            logger.warning(f"[Task {self.request.id}] Groq failed (skipping): {e}")
-            # Fallback static recommendations
-            ai_recs = [
-                {"category": "skincare",  "title": "Daily Cleanser",   "desc": "Use a gentle pH-balanced cleanser morning and night.",   "priority": 0},
-                {"category": "skincare",  "title": "SPF Protection",   "desc": "Apply SPF 50 every morning, even on cloudy days.",        "priority": 1},
-                {"category": "skincare",  "title": "Moisturiser",      "desc": "Apply a non-comedogenic moisturiser after cleansing.",    "priority": 2},
-                {"category": "lifestyle", "title": "Hydration",        "desc": "Drink at least 2 litres of water daily.",                 "priority": 3},
-                {"category": "lifestyle", "title": "Sleep Quality",    "desc": "Aim for 7-9 hours of sleep to support skin repair.",     "priority": 4},
-            ]
+        # ── 6. Use static recommendations (fast) ─────────────────
+        # NOTE: Groq recommendations will be generated async in background
+        #       This ensures results appear immediately (in ~10-30 seconds)
+        ai_recs = [
+            {"category": "skincare",  "title": "Daily Cleanser",   "desc": "Use a gentle pH-balanced cleanser morning and night.",   "priority": 0},
+            {"category": "skincare",  "title": "SPF Protection",   "desc": "Apply SPF 50 every morning, even on cloudy days.",        "priority": 1},
+            {"category": "skincare",  "title": "Moisturiser",      "desc": "Apply a non-comedogenic moisturiser after cleansing.",    "priority": 2},
+            {"category": "lifestyle", "title": "Hydration",        "desc": "Drink at least 2 litres of water daily.",                 "priority": 3},
+            {"category": "lifestyle", "title": "Sleep Quality",    "desc": "Aim for 7-9 hours of sleep to support skin repair.",     "priority": 4},
+        ]
+        
+        logger.info(f"[Task {self.request.id}] Using fast static recommendations")
 
         # ── 7. Persist results to DB ───────────────────────────
         face_rec = FaceAnalysis(
@@ -376,11 +349,35 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
                 priority         = r["priority"],
             ))
 
-        # ── 8. Mark job COMPLETED ──────────────────────────────
+        # ── 8. Queue async Groq recommendations ─────────────────
+        # These run in background without blocking analysis results
+        ml_summary = {
+            "symmetry_score":     symmetry_score,
+            "golden_ratio_score": golden_ratio_score,
+            "skin_tone":          skin_tone_label,
+            "brightness":         brightness,
+            "age_estimate":       age_estimate,
+            "gender":             gender,
+            "face_shape":         face_shape,
+            "conditions":         [c["type"] for c in conditions],
+        }
+        
+        try:
+            # Queue Groq recommendation generation as background task
+            generate_groq_recommendations.apply_async(
+                args=[job_id, json.dumps(ml_summary)],
+                queue="default",
+            )
+            logger.info(f"[Task {self.request.id}] Queued async Groq recommendations generation")
+        except Exception as e:
+            logger.warning(f"[Task {self.request.id}] Could not queue Groq task: {e}")
+
+        # ── 9. Mark job COMPLETED ──────────────────────────────
         job.status = JobStatus.COMPLETED
         db.commit()
 
-        logger.info(f"[Task {self.request.id}] Analysis COMPLETE for job_id={job_id}")
+        total_elapsed = time.time() - task_start
+        logger.info(f"[Task {self.request.id}] ✅ Analysis COMPLETE for job_id={job_id} (total time: {total_elapsed:.1f}s)")
         return {"job_id": job_id, "status": "completed", "task_id": self.request.id}
 
     except Exception as exc:
@@ -396,5 +393,86 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
         except Exception:
             pass
         raise self.retry(exc=exc)
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True, name="tasks.generate_groq_recommendations")
+def generate_groq_recommendations(self, job_id: int, ml_summary_json: str):
+    """
+    Async task to generate Groq recommendations in background.
+    Runs after analysis completes, doesn't block UI.
+    """
+    logger.info(f"[Groq Task {self.request.id}] Starting for job_id={job_id}")
+    
+    db = SessionLocal()
+    try:
+        import json
+        from database.models import FaceAnalysis, Recommendation
+        from services.ai_service import AIService
+        
+        # Parse ML summary
+        ml_summary = json.loads(ml_summary_json)
+        
+        # Query face analysis record
+        face_rec = db.query(FaceAnalysis).filter(FaceAnalysis.job_id == job_id).first()
+        if not face_rec:
+            logger.warning(f"[Groq Task {self.request.id}] Face analysis not found")
+            return
+        
+        # Get job user
+        from database.models import AnalysisJob
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
+        if not job:
+            logger.warning(f"[Groq Task {self.request.id}] Job not found")
+            return
+        
+        # Generate Groq recommendations
+        logger.info(f"[Groq Task {self.request.id}] Calling Groq AI...")
+        start = time.time()
+        
+        ai = AIService()
+        suggestions = ai.generate_suggestions(
+            ml_outputs=ml_summary,
+            user_id=job.user_id  # Store with user_id for Qdrant
+        )
+        
+        elapsed = time.time() - start
+        logger.info(f"[Groq Task {self.request.id}] ✅ Groq completed in {elapsed:.1f}s")
+        
+        # Store AI recommendations
+        ai_recs = []
+        for i, s in enumerate(suggestions.get("skincare_suggestions", [])[:3]):
+            ai_recs.append({
+                "category": "skincare",
+                "title":    f"Skincare Tip {i + 1}",
+                "desc":     s,
+                "priority": i,
+            })
+        for i, s in enumerate(suggestions.get("lifestyle_suggestions", [])[:2]):
+            ai_recs.append({
+                "category": "lifestyle",
+                "title":    f"Lifestyle Tip {i + 1}",
+                "desc":     s,
+                "priority": i + 3,
+            })
+        
+        # Update database
+        for i, rec in enumerate(ai_recs):
+            recommendation = Recommendation(
+                face_analysis_id=face_rec.id,
+                category=rec["category"],
+                title=rec["title"],
+                description=rec["desc"],
+                priority=rec["priority"],
+            )
+            db.add(recommendation)
+        
+        db.commit()
+        logger.info(f"[Groq Task {self.request.id}] Stored {len(ai_recs)} Groq recommendations")
+        
+    except Exception as e:
+        logger.error(f"[Groq Task {self.request.id}] Failed: {e}")
+        # Groq failure is non-blocking, log and continue
     finally:
         db.close()

@@ -75,3 +75,5 @@ langchain
 langchain-groq
 langgraph
 qdrant-client
+sentence-transformers>=2.2.0
+

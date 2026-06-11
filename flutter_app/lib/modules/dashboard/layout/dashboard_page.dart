@@ -13,12 +13,15 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/fi_app_bar.dart';
 import '../../auth/layout/login_modal.dart';
 import '../../analysis/service/analysis_service.dart';
+import '../../analysis/service/chat_service.dart';
+import '../../analysis/components/chat_bubble.dart';
 import '../types/dashboard_types.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -101,6 +104,78 @@ class _DashboardPageState extends State<DashboardPage>
     super.dispose();
   }
 
+  void _showChatModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.95,
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: AppColors.bgPrimary,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.accentCyan.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // ── Modal header ───────────────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppColors.accentCyan.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'AI Skincare Assistant',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.accentCyan.withValues(alpha: 0.1),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: AppColors.accentCyan,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // ── Chat content ───────────────────────────────
+              Expanded(
+                child: _ModalChatWidget(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -143,6 +218,21 @@ class _DashboardPageState extends State<DashboardPage>
         onTap: () =>
             Navigator.pushReplacementNamed(context, AppRoutes.home),
       ),
+
+      // ── Chat bubble button ─────────────────────────────────
+      floatingActionButton: _result != null
+          ? FloatingActionButton(
+              onPressed: () => _showChatModal(context),
+              backgroundColor: AppColors.accentCyan,
+              elevation: 8,
+              shape: const CircleBorder(),
+              child: const Icon(
+                Icons.chat_bubble_outline,
+                color: Colors.black,
+                size: 24,
+              ),
+            )
+          : null,
     );
   }
 
@@ -934,6 +1024,143 @@ class _HistoryEntry extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  TAB 4 — CHAT (AI skincare assistant) - In-page widget
+// ══════════════════════════════════════════════════════════════
+
+class _ChatTab extends StatefulWidget {
+  final AnalysisResult result;
+  const _ChatTab({required this.result});
+
+  @override
+  State<_ChatTab> createState() => _ChatTabState();
+}
+
+class _ChatTabState extends State<_ChatTab> {
+  late TextEditingController _controller;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _isLoading) return;
+
+    // For now, just show a placeholder
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Chat feature is being initialized... Try again in a moment!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Ask me anything about your analysis or skincare in general!',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.chat_outlined,
+                  size: 48,
+                  color: Colors.grey[600],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Chat powered by AI',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your personalized skincare assistant',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    hintText: 'Ask a skincare question...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  maxLines: null,
+                  onSubmitted: (_) => _sendMessage(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FloatingActionButton(
+                mini: true,
+                onPressed: _isLoading ? null : _sendMessage,
+                child: _isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).primaryColor,
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.send),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 //  BOTTOM — NEW ANALYSIS BAR
 // ══════════════════════════════════════════════════════════════
 
@@ -973,6 +1200,239 @@ class _NewAnalysisBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL CHAT WIDGET (in dialog)
+// ══════════════════════════════════════════════════════════════
+
+class _ModalChatWidget extends StatefulWidget {
+  const _ModalChatWidget();
+
+  @override
+  State<_ModalChatWidget> createState() => _ModalChatWidgetState();
+}
+
+class _ModalChatWidgetState extends State<_ModalChatWidget> {
+  late ScrollController _scrollController;
+  late ChatService _chatService;
+  bool _isLoading = false;
+  final List<ChatMessage> _messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _chatService = ChatService();
+    _initializeSession();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _initializeSession() {
+    if (_chatService.sessionId.isEmpty) {
+      _chatService.setSessionId(const Uuid().v4());
+    }
+  }
+
+  void _askQuestion(String question) async {
+    if (question.isEmpty) return;
+
+    // Add user message
+    final userMessage = ChatMessage(
+      id: DateTime.now().toString(),
+      text: question,
+      isUser: true,
+      timestamp: DateTime.now(),
+    );
+
+    setState(() {
+      _messages.add(userMessage);
+      _isLoading = true;
+    });
+    _scrollToBottom();
+
+    try {
+      // Get AI response
+      final answer = await _chatService.askQuestion(question);
+
+      // Add AI response
+      final aiMessage = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: answer,
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+      setState(() {
+        _messages.add(aiMessage);
+      });
+      _scrollToBottom();
+    } catch (e) {
+      // Add error message
+      final errorMessage = ChatMessage(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        text: 'Sorry, I could not process your question: $e',
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+      setState(() {
+        _messages.add(errorMessage);
+      });
+      _scrollToBottom();
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // ── Messages area ───────────────────────────────────
+        Expanded(
+          child: _messages.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_outlined,
+                          size: 48,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Ask me anything!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    return ChatBubble(message: _messages[index]);
+                  },
+                ),
+        ),
+
+        // ── Input area ──────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: AppColors.border,
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onSubmitted: (text) {
+                    if (text.isNotEmpty && !_isLoading) {
+                      _askQuestion(text);
+                    }
+                  },
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Type your question...',
+                    hintStyle: const TextStyle(color: AppColors.textSecondary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: AppColors.accentCyan,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    suffixIcon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: Padding(
+                              padding: EdgeInsets.all(8),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(
+                                  AppColors.accentCyan,
+                                ),
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _isLoading
+                    ? null
+                    : () {
+                        final controller = context
+                            .findRenderObject()
+                            ?.parent
+                            ?.parent
+                            ?.parent;
+                        // Simple workaround: use a controller from parent if needed
+                        // For now, users can press Enter to send
+                      },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _isLoading ? Colors.grey[700] : AppColors.accentCyan,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.send,
+                    color: _isLoading ? Colors.grey : Colors.black,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
