@@ -1,0 +1,118 @@
+name: Deploy to Vercel & Render
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ── Test Backend ───────────────────────────────────────────
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Run linting (flake8)
+        run: |
+          cd backend
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        continue-on-error: true
+      
+      - name: Run tests
+        run: |
+          cd backend
+          pytest tests/ -v --cov
+        continue-on-error: true
+
+  # ── Build & Deploy Frontend to Vercel ──────────────────────
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.13.x'
+          channel: 'stable'
+      
+      - name: Get Flutter dependencies
+        run: |
+          cd flutter_app
+          flutter pub get
+      
+      - name: Build Flutter Web
+        run: |
+          cd flutter_app
+          flutter build web \
+            --web-renderer html \
+            --dart-define API_BASE_URL=${{ secrets.RENDER_API_BASE_URL }} \
+            --dart-define WS_BASE_URL=${{ secrets.RENDER_WS_BASE_URL }} \
+            --release
+      
+      - name: Deploy to Vercel
+        run: |
+          npm install -g vercel
+          cd flutter_app
+          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # ── Deploy Backend to Render ───────────────────────────────
+  deploy-backend:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Render via webhook
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_WEBHOOK_URL }}
+        if: secrets.RENDER_DEPLOY_WEBHOOK_URL != ''
+
+  # ── Test Frontend ──────────────────────────────────────────
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.13.x'
+          channel: 'stable'
+      
+      - name: Get Flutter dependencies
+        run: |
+          cd flutter_app
+          flutter pub get
+      
+      - name: Run Flutter tests
+        run: |
+          cd flutter_app
+          flutter test --coverage
+        continue-on-error: true
+      
+      - name: Analyze code
+        run: |
+          cd flutter_app
+          flutter analyze
+        continue-on-error: true
