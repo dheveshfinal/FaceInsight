@@ -1,5 +1,5 @@
 # ==============================================================
-#  FaceInsight – Render Deployment Configuration
+#  FaceInsight – Render Deployment Configuration (Fixed)
 #  For deploying backend to Render.com
 # ==============================================================
 
@@ -7,11 +7,9 @@ services:
   # ── PostgreSQL Database ────────────────────────────────────
   - type: pserv
     name: faceinsight-postgres
-    env: docker
-    plan: standard
-    repo: https://github.com/yourusername/faceinsight
+    image: postgres:16
     region: oregon
-    dockerfilePath: ./docker/postgres.Dockerfile
+    plan: standard
     envVars:
       - key: POSTGRES_USER
         value: faceinsight
@@ -19,40 +17,38 @@ services:
         sync: false
       - key: POSTGRES_DB
         value: faceinsight_db
+      - key: POSTGRES_INITDB_ARGS
+        value: "-c max_connections=200"
 
   # ── Redis Cache/Queue ─────────────────────────────────────
   - type: pserv
     name: faceinsight-redis
-    env: docker
-    plan: standard
-    repo: https://github.com/yourusername/faceinsight
+    image: redis:7-alpine
     region: oregon
-    dockerCommand: redis-server --appendonly yes
+    plan: standard
 
   # ── Qdrant Vector Database ────────────────────────────────
   - type: pserv
     name: faceinsight-qdrant
-    env: docker
-    plan: standard
-    repo: https://github.com/yourusername/faceinsight
+    image: qdrant/qdrant:latest
     region: oregon
-    dockerCommand: ./qdrant --storage-path ./storage
-    diskSizeGB: 10
+    plan: standard
+    disks:
+      - name: qdrant-storage
+        mountPath: /qdrant/storage
+        sizeGB: 10
 
   # ── FastAPI Backend ───────────────────────────────────────
   - type: web
     name: faceinsight-api
-    env: docker
-    plan: standard
-    repo: https://github.com/yourusername/faceinsight
+    runtime: docker
     region: oregon
-    dockerfilePath: ./backend/Dockerfile
-    buildCommand: |
-      pip install -r backend/requirements.txt && \
-      python backend/database/migrations/run_migrations.py
-    startCommand: |
-      cd backend && \
-      uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: standard
+    repo: https://github.com/dheveshfinal/faceinsight
+    dockerfilePath: backend/Dockerfile
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    
     envVars:
       - key: PORT
         value: 8000
@@ -65,9 +61,9 @@ services:
       - key: JWT_SECRET_KEY
         sync: false
       - key: DATABASE_URL
-        fromDatabase:
+        fromService:
           name: faceinsight-postgres
-          property: connectionString
+          property: databaseURL
       - key: REDIS_URL
         value: redis://faceinsight-redis:6379
       - key: CELERY_BROKER
@@ -79,34 +75,34 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: CORS_ORIGINS
-        value: http://localhost,http://localhost:3000,https://your-vercel-app.vercel.app
+        value: http://localhost:3000,https://your-vercel-app.vercel.app
       - key: ALLOWED_HOSTS
-        value: localhost,127.0.0.1,faceinsight-api.onrender.com,your-domain.com
-    maxInstanceCount: 3
-    minInstanceCount: 1
+        value: faceinsight-api.onrender.com,localhost
+      - key: ML_DEVICE
+        value: cpu
+      - key: MAX_UPLOAD_SIZE_MB
+        value: 10
+    
     healthCheckPath: /api/v1/health
-    routes:
-      - pattern: /api/v1/*
-        destination: /api/v1/$1
 
   # ── Celery Worker (Background Tasks) ───────────────────────
   - type: background_worker
     name: faceinsight-celery
-    env: docker
-    plan: standard
-    repo: https://github.com/yourusername/faceinsight
+    runtime: docker
     region: oregon
-    dockerfilePath: ./backend/Dockerfile
-    startCommand: |
-      cd backend && \
-      celery -A workers.celery_app worker --loglevel=info --concurrency=2
+    plan: standard
+    repo: https://github.com/dheveshfinal/faceinsight
+    dockerfilePath: backend/Dockerfile
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && celery -A workers.celery_app worker --loglevel=info --concurrency=2
+    
     envVars:
       - key: APP_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
+        fromService:
           name: faceinsight-postgres
-          property: connectionString
+          property: databaseURL
       - key: REDIS_URL
         value: redis://faceinsight-redis:6379
       - key: CELERY_BROKER
@@ -117,3 +113,5 @@ services:
         value: http://faceinsight-qdrant:6333
       - key: GROQ_API_KEY
         sync: false
+      - key: ML_DEVICE
+        value: cpu
