@@ -39,6 +39,7 @@ class AIService:
     def __init__(self):
         self.groq_api_key = os.getenv("GROQ_API_KEY")
         self.qdrant_url = os.getenv("QDRANT_URL", "http://qdrant:6333")
+        self.qdrant_api_key = os.getenv("QDRANT_API_KEY", "")  # For Qdrant Cloud
         
         # Initialize Groq LLM
         if self.groq_api_key:
@@ -62,7 +63,13 @@ class AIService:
             
         # Initialize Qdrant Client
         try:
-            self.qdrant = QdrantClient(url=self.qdrant_url)
+            # Support both local Qdrant and Qdrant Cloud
+            if self.qdrant_api_key:
+                # Qdrant Cloud with API key
+                self.qdrant = QdrantClient(url=self.qdrant_url, api_key=self.qdrant_api_key)
+            else:
+                # Local Qdrant or Qdrant with no auth
+                self.qdrant = QdrantClient(url=self.qdrant_url)
             logger.info("Connected to Qdrant successfully.")
             self._init_collection()
         except Exception as e:

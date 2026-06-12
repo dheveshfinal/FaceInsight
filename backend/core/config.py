@@ -77,7 +77,10 @@ class Settings(BaseSettings):
 
     # ── Generative AI ──────────────────────────────────────────
     GROQ_API_KEY: str = ""
+    
+    # ── Qdrant Vector Database ────────────────────────────────
     QDRANT_URL: str = "http://qdrant:6333"
+    QDRANT_API_KEY: str = ""  # For Qdrant Cloud
 
     # ── Cloudinary (Image Storage) ─────────────────────────────
     CLOUDINARY_CLOUD_NAME: str = ""
