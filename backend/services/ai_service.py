@@ -20,6 +20,10 @@ from qdrant_client.http.models import Distance, VectorParams, PointStruct, Filte
 # LangGraph
 from langgraph.graph import StateGraph, START, END
 
+import os
+os.environ["HF_HOME"] = "/tmp/huggingface"
+os.environ["TRANSFORMERS_CACHE"] = "/tmp/huggingface"
+
 
 # State for LangGraph
 class AgentState(TypedDict):
