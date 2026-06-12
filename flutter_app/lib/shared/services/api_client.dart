@@ -3,7 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 
 class ApiClient {
-  static const String baseUrl = 'http://localhost:8000/api/v1';
+  /// API base URL from environment (dart-define) or fallback to localhost
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000/api/v1',
+  );
   
   final http.Client _client;
   

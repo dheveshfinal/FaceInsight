@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     QDRANT_URL: str = "http://qdrant:6333"
 
+    # ── Cloudinary (Image Storage) ─────────────────────────────
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     # ── Computed helpers ───────────────────────────────────────
     @property
     def allowed_hosts_list(self) -> List[str]:

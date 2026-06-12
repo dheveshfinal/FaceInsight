@@ -1,0 +1,119 @@
+# ==============================================================
+#  FaceInsight – Render Deployment Configuration
+#  For deploying backend to Render.com
+# ==============================================================
+
+services:
+  # ── PostgreSQL Database ────────────────────────────────────
+  - type: pserv
+    name: faceinsight-postgres
+    env: docker
+    plan: standard
+    repo: https://github.com/yourusername/faceinsight
+    region: oregon
+    dockerfilePath: ./docker/postgres.Dockerfile
+    envVars:
+      - key: POSTGRES_USER
+        value: faceinsight
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: POSTGRES_DB
+        value: faceinsight_db
+
+  # ── Redis Cache/Queue ─────────────────────────────────────
+  - type: pserv
+    name: faceinsight-redis
+    env: docker
+    plan: standard
+    repo: https://github.com/yourusername/faceinsight
+    region: oregon
+    dockerCommand: redis-server --appendonly yes
+
+  # ── Qdrant Vector Database ────────────────────────────────
+  - type: pserv
+    name: faceinsight-qdrant
+    env: docker
+    plan: standard
+    repo: https://github.com/yourusername/faceinsight
+    region: oregon
+    dockerCommand: ./qdrant --storage-path ./storage
+    diskSizeGB: 10
+
+  # ── FastAPI Backend ───────────────────────────────────────
+  - type: web
+    name: faceinsight-api
+    env: docker
+    plan: standard
+    repo: https://github.com/yourusername/faceinsight
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    buildCommand: |
+      pip install -r backend/requirements.txt && \
+      python backend/database/migrations/run_migrations.py
+    startCommand: |
+      cd backend && \
+      uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_SECRET_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: faceinsight-postgres
+          property: connectionString
+      - key: REDIS_URL
+        value: redis://faceinsight-redis:6379
+      - key: CELERY_BROKER
+        value: redis://faceinsight-redis:6379/0
+      - key: CELERY_BACKEND
+        value: redis://faceinsight-redis:6379/1
+      - key: QDRANT_URL
+        value: http://faceinsight-qdrant:6333
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: http://localhost,http://localhost:3000,https://your-vercel-app.vercel.app
+      - key: ALLOWED_HOSTS
+        value: localhost,127.0.0.1,faceinsight-api.onrender.com,your-domain.com
+    maxInstanceCount: 3
+    minInstanceCount: 1
+    healthCheckPath: /api/v1/health
+    routes:
+      - pattern: /api/v1/*
+        destination: /api/v1/$1
+
+  # ── Celery Worker (Background Tasks) ───────────────────────
+  - type: background_worker
+    name: faceinsight-celery
+    env: docker
+    plan: standard
+    repo: https://github.com/yourusername/faceinsight
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    startCommand: |
+      cd backend && \
+      celery -A workers.celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: faceinsight-postgres
+          property: connectionString
+      - key: REDIS_URL
+        value: redis://faceinsight-redis:6379
+      - key: CELERY_BROKER
+        value: redis://faceinsight-redis:6379/0
+      - key: CELERY_BACKEND
+        value: redis://faceinsight-redis:6379/1
+      - key: QDRANT_URL
+        value: http://faceinsight-qdrant:6333
+      - key: GROQ_API_KEY
+        sync: false
