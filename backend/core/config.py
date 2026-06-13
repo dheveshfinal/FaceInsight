@@ -43,14 +43,14 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
 
     # ── Redis ──────────────────────────────────────────────────
-    REDIS_URL: str
+    REDIS_URL: str = "rediss://default:gQAAAAAAAjtUAAIgcDJmNjA5ZTg0MTVhYmU0Zjk4OGU3YWMwMWQwOGVlOWFhOQ@sure-marmoset-146260.upstash.io:6379?ssl_cert_reqs=CERT_NONE"
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str = ""
 
     # ── Celery ─────────────────────────────────────────────────
-    CELERY_BROKER: str
-    CELERY_BACKEND: str
+    CELERY_BROKER: str = "rediss://default:gQAAAAAAAjtUAAIgcDJmNjA5ZTg0MTVhYmU0Zjk4OGU3YWMwMWQwOGVlOWFhOQ@sure-marmoset-146260.upstash.io:6379/0?ssl_cert_reqs=CERT_NONE"
+    CELERY_BACKEND: str = "rediss://default:gQAAAAAAAjtUAAIgcDJmNjA5ZTg0MTVhYmU0Zjk4OGU3YWMwMWQwOGVlOWFhOQ@sure-marmoset-146260.upstash.io:6379/1?ssl_cert_reqs=CERT_NONE"
     CELERY_TASK_ALWAYS_EAGER: bool = False
 
     # ── File Storage ───────────────────────────────────────────
