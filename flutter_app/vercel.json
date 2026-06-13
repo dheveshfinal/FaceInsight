@@ -6,7 +6,7 @@
       "src": "flutter_app",
       "use": "@vercel/flutter-web",
       "config": {
-        "buildCommand": "flutter build web --web-renderer html --dart-define API_BASE_URL=https://faceinsight-api.onrender.com/api/v1 --dart-define WS_BASE_URL=wss://faceinsight-api.onrender.com/ws --release",
+        "buildCommand": "flutter build web --web-renderer html --dart-define API_BASE_URL=https://faceinsight-y0sc.onrender.com/api/v1 --dart-define WS_BASE_URL=wss://faceinsight-y0sc.onrender.com/ws --release",
         "outputDirectory": "build/web"
       }
     }
