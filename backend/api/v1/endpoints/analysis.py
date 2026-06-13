@@ -47,12 +47,27 @@ async def get_job_status(
     progress = None
     stage = None
 
-    # NOTE: In production, get progress from Celery task result backend
-    # For now, return basic status
     if job.status == JobStatus.PROCESSING:
-        # Placeholder: In real app, query task result for progress
-        progress = 0.5
-        stage = "Analyzing…"
+        # Query Celery task progress
+        if job.celery_task_id:
+            from workers.celery_app import celery_app
+            task_result = celery_app.AsyncResult(job.celery_task_id)
+            
+            # Get progress from Celery
+            if task_result.state == 'PROGRESS':
+                progress = task_result.info.get('progress', 0.0)
+                stage = task_result.info.get('stage', 'Processing…')
+            elif task_result.state == 'SUCCESS':
+                progress = 1.0
+                stage = 'Completing…'
+            else:
+                # Fallback: show a default progress while waiting
+                progress = 0.1
+                stage = 'Starting analysis…'
+        else:
+            progress = 0.1
+            stage = 'Queued…'
+            
     elif job.status == JobStatus.COMPLETED:
         progress = 1.0
         stage = "Complete!"

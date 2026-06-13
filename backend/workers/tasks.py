@@ -74,6 +74,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
         job.celery_task_id = self.request.id
         db.commit()
 
+        # Send initial progress
+        self.update_state(state='PROGRESS', meta={'progress': 0.05, 'stage': 'Starting analysis…'})
+
         # ── 1. Load image ──────────────────────────────────────
         upload_dir = os.environ.get("UPLOAD_DIR", "/app/media/uploads")
         image_path = Path(upload_dir) / image_filename
@@ -84,6 +87,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
         from PIL import Image as PILImage
         pil_img = PILImage.open(image_path).convert("RGB")
         width, height = pil_img.size
+
+        # Update progress
+        self.update_state(state='PROGRESS', meta={'progress': 0.15, 'stage': 'Detecting face…'})
 
         # ── 2. MediaPipe FaceMesh ──────────────────────────────
         symmetry_score    = None
@@ -154,6 +160,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
         except Exception as e:
             logger.warning(f"[Task {self.request.id}] MediaPipe failed (skipping): {e}")
 
+        # Update progress
+        self.update_state(state='PROGRESS', meta={'progress': 0.35, 'stage': 'Analyzing skin…'})
+
         # ── 3. Skin tone via PIL ───────────────────────────────
         skin_tone_hex   = None
         skin_tone_label = None
@@ -184,6 +193,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
             logger.info(f"[Task {self.request.id}] Skin tone: {skin_tone_hex} ({skin_tone_label})")
         except Exception as e:
             logger.warning(f"[Task {self.request.id}] Skin tone failed (skipping): {e}")
+
+        # Update progress
+        self.update_state(state='PROGRESS', meta={'progress': 0.50, 'stage': 'Detecting age & gender…'})
 
         # ── 4. InsightFace age / gender (optional) ────────────
         age_estimate        = None
@@ -227,6 +239,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
             )
         except Exception as e:
             logger.warning(f"[Task {self.request.id}] InsightFace failed (skipping): {e}")
+
+        # Update progress
+        self.update_state(state='PROGRESS', meta={'progress': 0.70, 'stage': 'Detecting skin conditions…'})
 
         # ── 5. Detect skin conditions from brightness + heuristics ──
         conditions: list[dict] = []
@@ -309,6 +324,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
             {"category": "lifestyle", "title": "Sleep Quality",    "desc": "Aim for 7-9 hours of sleep to support skin repair.",     "priority": 4},
         ]
         
+        # Update progress
+        self.update_state(state='PROGRESS', meta={'progress': 0.85, 'stage': 'Saving results…'})
+        
         logger.info(f"[Task {self.request.id}] Using fast static recommendations")
 
         # ── 7. Persist results to DB ───────────────────────────
@@ -375,6 +393,9 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
         # ── 9. Mark job COMPLETED ──────────────────────────────
         job.status = JobStatus.COMPLETED
         db.commit()
+
+        # Final progress update
+        self.update_state(state='PROGRESS', meta={'progress': 1.0, 'stage': 'Complete!'})
 
         total_elapsed = time.time() - task_start
         logger.info(f"[Task {self.request.id}] ✅ Analysis COMPLETE for job_id={job_id} (total time: {total_elapsed:.1f}s)")
