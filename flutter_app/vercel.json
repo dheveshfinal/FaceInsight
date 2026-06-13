@@ -1,8 +1,8 @@
 {
   "version": 2,
   "name": "faceinsight-flutter-web",
-  "buildCommand": "bash ../build.sh",
-  "outputDirectory": "build/web",
+  "buildCommand": "bash ./build.sh",
+  "outputDirectory": "flutter_app/build/web",
   "routes": [
     {
       "src": "/static/(.*)",

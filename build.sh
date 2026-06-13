@@ -1,18 +1,20 @@
 #!/bin/bash
 set -e
 
+cd flutter_app
+
 echo "Installing Flutter..."
-git clone https://github.com/flutter/flutter.git --depth 1 || true
-export PATH="$PATH:$(pwd)/flutter/bin"
+if [ ! -d "$HOME/flutter" ]; then
+  git clone https://github.com/flutter/flutter.git $HOME/flutter --depth 1
+fi
+export PATH="$PATH:$HOME/flutter/bin"
 flutter config --enable-web
 
 echo "Getting Flutter packages..."
-cd flutter_app
 flutter pub get
 
 echo "Building Flutter Web..."
-flutter build web --release \
-  --dart-define API_BASE_URL=$API_BASE_URL \
-  --dart-define WS_BASE_URL=$WS_BASE_URL
+flutter build web --release
 
-echo "Build complete!"
+echo "Output directory ready at build/web"
+ls -la build/web/
