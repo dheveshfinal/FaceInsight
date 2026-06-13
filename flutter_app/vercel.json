@@ -4,11 +4,7 @@
   "builds": [
     {
       "src": "flutter_app",
-      "use": "@vercel/flutter-web",
-      "config": {
-        "buildCommand": "flutter build web --web-renderer html --dart-define API_BASE_URL=https://faceinsight-y0sc.onrender.com/api/v1 --dart-define WS_BASE_URL=wss://faceinsight-y0sc.onrender.com/ws --release",
-        "outputDirectory": "build/web"
-      }
+      "use": "@vercel/flutter-web"
     }
   ],
   "routes": [
@@ -23,5 +19,9 @@
       "src": "/.*",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "API_BASE_URL": "@api_base_url",
+    "WS_BASE_URL": "@ws_base_url"
+  }
 }
