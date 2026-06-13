@@ -3,6 +3,7 @@
 #  Celery application instance
 # ==============================================================
 
+import ssl
 from celery import Celery
 from core.config import get_settings
 
@@ -19,41 +20,49 @@ celery_app = Celery(
 )
 
 # ── Configuration ──────────────────────────────────────────────
-celery_app.conf.update(
+conf_update = {
     # Serialisation
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
+    "task_serializer": "json",
+    "accept_content": ["json"],
+    "result_serializer": "json",
 
     # Timezone
-    timezone="UTC",
-    enable_utc=True,
+    "timezone": "UTC",
+    "enable_utc": True,
 
     # Task routing
-    task_routes={
+    "task_routes": {
         "workers.tasks.run_analysis_pipeline": {"queue": "ml_queue"},
     },
 
     # Result expiry (24 h)
-    result_expires=86400,
+    "result_expires": 86400,
 
     # Retry / reliability
-    task_acks_late=True,
-    task_reject_on_worker_lost=True,
+    "task_acks_late": True,
+    "task_reject_on_worker_lost": True,
 
     # Redis broker options (Upstash compatibility)
-    broker_connection_retry_on_startup=True,
-    broker_pool_limit=None,
-    broker_connection_retry=True,
-    broker_connection_max_retries=10,
+    "broker_connection_retry_on_startup": True,
+    "broker_pool_limit": None,
+    "broker_connection_retry": True,
+    "broker_connection_max_retries": 10,
 
     # Beat scheduler (redbeat)
-    beat_scheduler="redbeat.RedBeatScheduler",
-    redbeat_redis_url=settings.CELERY_BROKER,
+    "beat_scheduler": "redbeat.RedBeatScheduler",
+    "redbeat_redis_url": settings.CELERY_BROKER,
 
     # Always-eager mode for tests (overridden by env)
-    task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
-)
+    "task_always_eager": settings.CELERY_TASK_ALWAYS_EAGER,
+}
+
+if settings.CELERY_BROKER.startswith("rediss://"):
+    conf_update["broker_use_ssl"] = {"ssl_cert_reqs": ssl.CERT_NONE}
+
+if settings.CELERY_BACKEND.startswith("rediss://"):
+    conf_update["redis_backend_use_ssl"] = {"ssl_cert_reqs": ssl.CERT_NONE}
+
+celery_app.conf.update(**conf_update)
 
 # ── Make importable as `celery_app` or `app` ──────────────────
 app = celery_app
