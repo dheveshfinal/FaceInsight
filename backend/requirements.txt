@@ -75,5 +75,5 @@ langchain
 langchain-groq
 langgraph
 qdrant-client
-fastembed==0.3.6
+sentence-transformers>=2.2.0
 

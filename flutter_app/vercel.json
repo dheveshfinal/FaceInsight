@@ -1,23 +1,14 @@
 {
   "version": 2,
-  "name": "faceinsight-flutter-web",
-  "builds": [
-    {
-      "src": "flutter_app",
-      "use": "@vercel/flutter-web",
-      "config": {
-        "buildCommand": "flutter build web --release",
-        "outputDirectory": "build/web"
-      }
-    }
-  ],
+  "buildCommand": "bash ./build.sh",
+  "outputDirectory": "flutter_app/build/web",
   "routes": [
     {
       "src": "/static/(.*)",
       "headers": {
         "cache-control": "public, max-age=31536000, immutable"
       },
-      "destination": "/static/$1"
+      "destination": "/index.html"
     },
     {
       "src": "/.*",

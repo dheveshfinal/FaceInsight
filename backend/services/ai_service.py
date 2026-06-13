@@ -1,7 +1,4 @@
 import os
-os.environ["HF_HOME"] = "/tmp/huggingface"
-os.environ["TRANSFORMERS_CACHE"] = "/tmp/huggingface"
-
 import json
 import uuid
 from datetime import datetime
@@ -13,8 +10,8 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
-# Embeddings - fastembed (lightweight)
-from fastembed import TextEmbedding
+# Embeddings - HuggingFace (free, no API key)
+from sentence_transformers import SentenceTransformer
 
 # Qdrant
 from qdrant_client import QdrantClient
@@ -34,8 +31,8 @@ class AgentState(TypedDict):
 
 
 COLLECTION_NAME = "skincare_recommendations"
-VECTOR_SIZE = 384
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+VECTOR_SIZE = 384  # all-MiniLM-L6-v2 embedding size
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 
 class AIService:
@@ -57,12 +54,13 @@ class AIService:
             
         # Initialize HuggingFace Sentence Transformer (free, no API key)
         try:
-            logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-            self.embeddings_model = TextEmbedding(EMBEDDING_MODEL)
-            logger.info("✅ Embeddings loaded successfully")
+            logger.info(f"Loading HuggingFace embedding model: {EMBEDDING_MODEL}")
+            self.embeddings_model = SentenceTransformer(EMBEDDING_MODEL)
+            logger.info("✅ HuggingFace embeddings loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load embeddings model: {e}")
             self.embeddings_model = None
+            
         # Initialize Qdrant Client
         try:
             # Support both local Qdrant and Qdrant Cloud
@@ -141,7 +139,7 @@ class AIService:
             rec_text = " ".join(suggestions.get("skincare_suggestions", [])) + " " + " ".join(suggestions.get("lifestyle_suggestions", []))
             
             # Generate embedding using HuggingFace
-            embedding = list(self.embeddings_model.embed([rec_text]))[0].tolist()
+            embedding = self.embeddings_model.encode(rec_text).tolist()
             
             # Create unique point ID
             point_id = int(uuid.uuid4().int % (2**63))
@@ -186,19 +184,28 @@ class AIService:
         
         if self.qdrant and self.embeddings_model:
             try:
-                question_embedding = list(self.embeddings_model.embed([question]))[0].tolist()
+                # Embed the question
+                question_embedding = self.embeddings_model.encode(question).tolist()
                 
+                # Build filter for user/session isolation
                 if user_id:
+                    # Logged-in user: retrieve only their data
                     filter_condition = Filter(
-                        must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
+                        must=[
+                            FieldCondition(key="user_id", match=MatchValue(value=user_id))
+                        ]
                     )
                 elif session_id:
+                    # Anonymous user: retrieve only their session data
                     filter_condition = Filter(
-                        must=[FieldCondition(key="session_id", match=MatchValue(value=session_id))]
+                        must=[
+                            FieldCondition(key="session_id", match=MatchValue(value=session_id))
+                        ]
                     )
                 else:
                     filter_condition = None
                 
+                # Search Qdrant
                 hits = self.qdrant.search(
                     collection_name=COLLECTION_NAME,
                     query_vector=question_embedding,
@@ -207,6 +214,7 @@ class AIService:
                     score_threshold=0.5
                 )
                 
+                # Combine retrieved recommendations
                 if hits:
                     contexts = [hit.payload.get("recommendations", "") for hit in hits if hit.payload]
                     context = " ".join(contexts)
