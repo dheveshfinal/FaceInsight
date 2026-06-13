@@ -19,9 +19,5 @@
       "src": "/.*",
       "destination": "/index.html"
     }
-  ],
-  "env": {
-    "API_BASE_URL": "@api_base_url",
-    "WS_BASE_URL": "@ws_base_url"
-  }
+  ]
 }
