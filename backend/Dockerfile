@@ -88,6 +88,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application source
 COPY . .
 
+# Make start script executable
+RUN chmod +x start.sh
+
 # Create media directories
 RUN mkdir -p /app/media/uploads /app/media/processed /app/ml/weights
 
@@ -98,5 +101,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Default command (overridden by docker-compose)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run startup script (Celery + API together)
+CMD ["./start.sh"]

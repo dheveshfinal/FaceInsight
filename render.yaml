@@ -31,7 +31,7 @@ services:
         mountPath: /qdrant/storage
         sizeGB: 10
 
-  # ── FastAPI Backend ───────────────────────────────────────
+  # ── FastAPI Backend (with embedded Celery) ───────────────────
   - type: web
     name: faceinsight-api
     runtime: docker
@@ -40,7 +40,7 @@ services:
     repo: https://github.com/dheveshfinal/faceinsight
     dockerfilePath: backend/Dockerfile
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && bash start.sh
     
     envVars:
       - key: PORT
@@ -77,34 +77,3 @@ services:
         value: 10
     
     healthCheckPath: /api/v1/health
-
-  # ── Celery Worker (Background Tasks) ───────────────────────
-  - type: background_worker
-    name: faceinsight-celery
-    runtime: docker
-    region: oregon
-    plan: standard
-    repo: https://github.com/dheveshfinal/faceinsight
-    dockerfilePath: backend/Dockerfile
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && celery -A workers.celery_app worker --loglevel=info --concurrency=2
-    
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: DATABASE_URL
-        fromService:
-          name: faceinsight-postgres
-          property: databaseURL
-      - key: REDIS_URL
-        sync: false
-      - key: CELERY_BROKER
-        sync: false
-      - key: CELERY_BACKEND
-        sync: false
-      - key: QDRANT_URL
-        value: http://faceinsight-qdrant:6333
-      - key: GROQ_API_KEY
-        sync: false
-      - key: ML_DEVICE
-        value: cpu
