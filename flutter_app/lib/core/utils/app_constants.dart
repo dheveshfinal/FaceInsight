@@ -10,12 +10,12 @@ class AppConstants {
   // API_BASE_URL and WS_BASE_URL are set by flutter build --dart-define
   static const String _apiBase = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: 'https://faceinsight-y0sc.onrender.com/api/v1',
   );
 
   static const String _wsBase = String.fromEnvironment(
     'WS_BASE_URL',
-    defaultValue: 'ws://localhost:8000/ws',
+    defaultValue: 'wss://faceinsight-y0sc.onrender.com/ws',
   );
 
   // ── Auth endpoints ─────────────────────────────────────────

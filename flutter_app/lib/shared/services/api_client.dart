@@ -6,7 +6,7 @@ class ApiClient {
   /// API base URL from environment (dart-define) or fallback to localhost
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: 'https://faceinsight-y0sc.onrender.com/api/v1',
   );
   
   final http.Client _client;
