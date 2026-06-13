@@ -1,12 +1,8 @@
 {
   "version": 2,
-  "name": "faceinsight-flutter-web",
-  "builds": [
-    {
-      "src": "flutter_app",
-      "use": "@vercel/flutter-web"
-    }
-  ],
+  "buildCommand": "git clone https://github.com/flutter/flutter.git -b stable $HOME/flutter && export PATH=$PATH:$HOME/flutter/bin && flutter precache && cd flutter_app && flutter pub get && flutter build web --web-renderer html --dart-define API_BASE_URL=https://faceinsight-y0sc.onrender.com/api/v1 --dart-define WS_BASE_URL=wss://faceinsight-y0sc.onrender.com/ws --release",
+  "outputDirectory": "flutter_app/build/web",
+  "framework": null,
   "routes": [
     {
       "src": "/static/(.*)",
