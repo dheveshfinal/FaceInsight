@@ -41,6 +41,12 @@ celery_app.conf.update(
     task_acks_late=True,
     task_reject_on_worker_lost=True,
 
+    # Redis broker options (Upstash compatibility)
+    broker_connection_retry_on_startup=True,
+    broker_pool_limit=None,
+    broker_connection_retry=True,
+    broker_connection_max_retries=10,
+
     # Beat scheduler (redbeat)
     beat_scheduler="redbeat.RedBeatScheduler",
     redbeat_redis_url=settings.CELERY_BROKER,

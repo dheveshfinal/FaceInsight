@@ -20,13 +20,6 @@ services:
       - key: POSTGRES_INITDB_ARGS
         value: "-c max_connections=200"
 
-  # ── Redis Cache/Queue ─────────────────────────────────────
-  - type: pserv
-    name: faceinsight-redis
-    image: redis:7-alpine
-    region: oregon
-    plan: standard
-
   # ── Qdrant Vector Database ────────────────────────────────
   - type: pserv
     name: faceinsight-qdrant
@@ -65,11 +58,11 @@ services:
           name: faceinsight-postgres
           property: databaseURL
       - key: REDIS_URL
-        value: redis://faceinsight-redis:6379
+        sync: false
       - key: CELERY_BROKER
-        value: redis://faceinsight-redis:6379/0
+        sync: false
       - key: CELERY_BACKEND
-        value: redis://faceinsight-redis:6379/1
+        sync: false
       - key: QDRANT_URL
         value: http://faceinsight-qdrant:6333
       - key: GROQ_API_KEY
@@ -104,11 +97,11 @@ services:
           name: faceinsight-postgres
           property: databaseURL
       - key: REDIS_URL
-        value: redis://faceinsight-redis:6379
+        sync: false
       - key: CELERY_BROKER
-        value: redis://faceinsight-redis:6379/0
+        sync: false
       - key: CELERY_BACKEND
-        value: redis://faceinsight-redis:6379/1
+        sync: false
       - key: QDRANT_URL
         value: http://faceinsight-qdrant:6333
       - key: GROQ_API_KEY
