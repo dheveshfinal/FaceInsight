@@ -57,6 +57,14 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database connection verified")
 
+    # Test Celery connection
+    try:
+        from workers.celery_app import celery_app
+        celery_app.connection()
+        logger.info(f"✅ Celery broker connected: {settings.CELERY_BROKER}")
+    except Exception as e:
+        logger.warning(f"⚠️  Celery broker unavailable (workers may be down): {e}")
+
     logger.info(f"{settings.APP_NAME} is ready on port {settings.BACKEND_PORT}")
 
     yield
