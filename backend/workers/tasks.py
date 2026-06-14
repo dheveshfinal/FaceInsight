@@ -223,7 +223,7 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
                 logger.info(f"[Task {self.request.id}] Loading InsightFace model into memory... (first time, may take 30-60s)")
                 start_time = time.time()
                 _insight_face_app = InsightApp(
-                    name="buffalo_l",
+                    name="buffalo_s",  # smaller model: ~60MB vs 500MB for buffalo_l
                     root=weights_dir,
                     providers=["CPUExecutionProvider"],
                 )
