@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/widgets/creator_watermark.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,23 @@ class FaceInsightApp extends StatelessWidget {
       theme: AppTheme.dark,
       initialRoute: AppRoutes.home,
       onGenerateRoute: AppRouter.generateRoute,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            if (child != null) child,
+            const Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: IgnorePointer(
+                  child: CreatorWatermark(),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
