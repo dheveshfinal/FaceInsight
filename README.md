@@ -10,29 +10,31 @@ FaceInsight is architected as a modern microservices application powered by Dock
 
 ```mermaid
 graph TD
-    User([User Browser]) -->|HTTPS / WSS| Nginx[Nginx Reverse Proxy]
-    Nginx -->|Serves Web Assets| Flutter[Flutter Web Frontend]
-    Nginx -->|Routes /api/v1| FastAPI[FastAPI Backend]
+    User([User Browser]) -->|HTTPS / WSS| Vercel[Vercel Frontend]
+    Vercel -->|REST API| FastAPI[Render Web API]
     
-    FastAPI -->|Queues Tasks| Redis[(Redis Broker)]
-    FastAPI -->|Stores metadata & history| DB[(PostgreSQL)]
+    FastAPI -->|Uploads Image| Cloudinary[(Cloudinary)]
+    FastAPI -->|Queues Tasks| Redis[(Upstash Redis)]
+    FastAPI -->|Stores metadata & history| DB[(Render PostgreSQL)]
     
-    Celery[Celery ML Workers] -->|Pulls Jobs| Redis
+    Celery[Render Celery Worker] -->|Pulls Jobs| Redis
+    Celery -->|Downloads Image| Cloudinary
     Celery -->|Saves results| DB
     Celery -->|Retrieves faces| Qdrant[(Qdrant Vector DB)]
     Celery -->|Groq API| LLM[LLaMA 3.1 8B Instant]
 ```
 
-- **Frontend**: Flutter Web Application utilizing custom graphics, painters, and responsive design systems.
-- **Backend API**: FastAPI asynchronous server providing secure/anonymous REST endpoints.
-- **Background Workers**: Celery workers handling intensive image processing and machine learning pipelines.
-- **ML Pipeline**: 
-  - **InsightFace**: Used for face detection, alignment, and facial landmark extraction.
+- **Frontend**: Flutter Web Application hosted on Vercel utilizing custom graphics, painters, and responsive design systems. Features a custom animated "Created by Dhevesh" watermark.
+- **Backend API**: FastAPI asynchronous server hosted as a Render Web Service providing secure/anonymous REST endpoints.
+- **Background Workers**: Dedicated Celery worker hosted on a secondary Render account to bypass free-tier memory limits.
+- **Storage Layer**: Images are securely stored in Cloudinary, enabling seamless cross-account data sharing between the API and the Worker.
+- **ML Pipeline (Optimized for Free Tier)**: 
+  - **OpenCV & MediaPipe**: Replaced heavy ML models (like InsightFace) with lightweight OpenCV Haar Cascades for face detection and MediaPipe for facial landmark extraction and geometry calculations. Fits easily within 512MB RAM!
   - **Skin Heuristics**: Heuristic modeling of skin regions for acne detection, dark circles, wrinkles, and pores.
   - **AI Recommendation Engine**: Utilizes LLaMA 3.1 8B via Groq to construct specialized morning and evening routine guides.
 - **Database Layer**:
   - **PostgreSQL**: Stores persistent user registration, authentication details, job history, and analysis records.
-  - **Redis**: Serves as the message broker for Celery and in-memory cache.
+  - **Redis (Upstash)**: Serverless Redis serving as the message broker connecting the FastAPI server and the Celery worker across different accounts.
   - **Qdrant**: High-performance vector database utilized for facial vector searching and similarity calculations.
 
 ---
@@ -45,7 +47,7 @@ graph TD
    - **Facial Symmetry Score**: Measure alignment of cheeks, eyes, and jawline.
    - **Golden Ratio (Phi)**: Analyzes proportions of facial landmarks.
    - **Face Shape Recognition**: Identifies face shapes (Oval, Round, Square, Heart, etc.).
-   - **Estimated Age & Gender**: Provides visual classification estimates.
+   - **Estimated Age & Gender**: Derived heuristically using MediaPipe facial ratios and skin brightness.
 4. **AI-Generated Recommendations**: Generates tailored routines (Cleansing, Treatment, Moisturizing, Sun Protection) using structured prompts sent to LLaMA 3.1.
 5. **Session-based History**: Authenticated users can save historical analysis jobs, tracking their skin health scores and progress over time.
 
@@ -55,14 +57,13 @@ graph TD
 
 | Component | Technology | Description |
 |---|---|---|
-| **Frontend** | Flutter, Dart | High performance web UI, custom painters, and animations |
-| **Backend API**| FastAPI, Python 3.11 | High performance async REST framework |
-| **Task Queue** | Celery, Redis | Distributes image analysis tasks asynchronously |
-| **Relational DB**| PostgreSQL, SQLAlchemy | Secure metadata, user authentication, and analysis history |
-| **Vector DB** | Qdrant | Dense vector indexes for facial biometrics |
-| **ML Engine** | InsightFace, OpenCV, ONNX | Face detection, alignment, and landmark mapping |
+| **Frontend** | Flutter, Dart | High performance web UI, custom painters, hosted on Vercel |
+| **Backend API**| FastAPI, Python 3.11 | High performance async REST framework hosted on Render |
+| **Task Queue** | Celery, Upstash Redis | Distributes image analysis tasks asynchronously |
+| **Relational DB**| PostgreSQL, SQLAlchemy | Secure metadata and analysis history hosted on Render |
+| **Image Storage**| Cloudinary | Remote image storage for cross-service processing |
+| **ML Engine** | OpenCV, MediaPipe | Ultra-lightweight face detection, alignment, and landmark mapping |
 | **GenAI** | Groq API (LLaMA 3.1 8B) | High speed LLM routine generation |
-| **Proxy / Server**| Nginx | Reverse proxy serving Flutter Web and routing APIs |
 
 ---
 
