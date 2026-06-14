@@ -228,68 +228,70 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
 
-                          // ── Headline ─────────────────────
-                          ShaderMask(
-                            shaderCallback: (bounds) =>
-                                AppColors.cyanBlueGradient.createShader(bounds),
-                            blendMode: BlendMode.srcIn,
-                            child: const Text(
-                              'AI Facial Analysis',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.8,
-                                height: 1.15,
-                                color: Colors.white,
+                            // ── Headline ─────────────────────
+                            ShaderMask(
+                              shaderCallback: (bounds) =>
+                                  AppColors.cyanBlueGradient.createShader(bounds),
+                              blendMode: BlendMode.srcIn,
+                              child: const Text(
+                                'AI Facial Analysis',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.8,
+                                  height: 1.15,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                          ),
 
-                          const SizedBox(height: 14),
+                            const SizedBox(height: 14),
 
-                          // ── Subtitle ──────────────────────
-                          const Text(
-                            'Point your front camera at your face — our AI\nanalyses your skin and gives real personalised results.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                              height: 1.55,
+                            // ── Subtitle ──────────────────────
+                            const Text(
+                              'Point your front camera at your face — our AI\nanalyses your skin and gives real personalised results.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                                height: 1.55,
+                              ),
                             ),
-                          ),
 
-                          const SizedBox(height: 36),
+                            const SizedBox(height: 36),
 
-                          // ── CTA Button ────────────────────
-                          _StartAnalysisButton(
-                            scaleAnimation: _btnScale,
-                            controller:    _btnCtrl,
-                            uploading:     _uploading,
-                            onTap:         _onStartAnalysis,
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ── Free Tier Notice ────────────────
-                          const Text(
-                            'Note: Analysis may take 1-2 minutes to complete\nas the AI backend wakes up from sleep.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                              height: 1.4,
+                            // ── CTA Button ────────────────────
+                            _StartAnalysisButton(
+                              scaleAnimation: _btnScale,
+                              controller:    _btnCtrl,
+                              uploading:     _uploading,
+                              onTap:         _onStartAnalysis,
                             ),
-                          ),
 
-                          const SizedBox(height: 16),
-                        ],
+                            const SizedBox(height: 16),
+
+                            // ── Free Tier Notice ────────────────
+                            const Text(
+                              'Note: Analysis may take 1-2 minutes to complete\nas the AI backend wakes up from sleep.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                                height: 1.4,
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -42,7 +42,7 @@ class AppConstants {
   static String get jobProgressWsUrl => '$_wsBase/job-progress';
 
   // ── Timeouts ───────────────────────────────────────────────
-  static const Duration httpTimeout = Duration(seconds: 30);
+  static const Duration httpTimeout = Duration(minutes: 2);
   static const Duration pollingInterval = Duration(seconds: 2);
   static const int maxPollingAttempts = 300; // 10 minutes max
 
