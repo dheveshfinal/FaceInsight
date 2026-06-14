@@ -459,8 +459,7 @@ def generate_groq_recommendations(self, job_id: int, ml_summary_json: str):
     """
     logger.info(f"[Groq Task {self.request.id}] Starting for job_id={job_id}")
     
-    from database.session import SessionLocal
-    db = SessionLocal()
+    db = _get_sync_session()
     try:
         import json
         from database.models import FaceAnalysis, Recommendation
