@@ -7,7 +7,7 @@ echo "=========================================="
 
 # Start Celery worker in background
 echo "🚀 Starting Celery..."
-celery -A workers.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 &
+celery -A workers.celery_app worker -Q celery,ml_queue,default --loglevel=info --concurrency=1 --max-tasks-per-child=10 &
 CELERY_PID=$!
 echo "✅ Celery worker started (PID: $CELERY_PID)"
 
