@@ -463,7 +463,6 @@ def generate_groq_recommendations(self, job_id: int, ml_summary_json: str):
     try:
         import json
         from database.models import FaceAnalysis, Recommendation
-        from services.ai_service import AIService
         
         # Parse ML summary
         ml_summary = json.loads(ml_summary_json)
@@ -485,11 +484,23 @@ def generate_groq_recommendations(self, job_id: int, ml_summary_json: str):
         logger.info(f"[Groq Task {self.request.id}] Calling Groq AI...")
         start = time.time()
         
-        ai = AIService()
-        suggestions = ai.generate_suggestions(
-            ml_outputs=ml_summary,
-            user_id=job.user_id  # Store with user_id for Qdrant
+        from langchain_groq import ChatGroq
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.output_parsers import JsonOutputParser
+        import os
+
+        llm = ChatGroq(
+            temperature=0.7,
+            model_name="llama-3.1-8b-instant",
+            groq_api_key=os.getenv("GROQ_API_KEY")
         )
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are an expert dermatologist AI. Given these facial scan results: {ml_outputs}. Provide 3 skincare suggestions and 2 lifestyle suggestions. Return strict JSON with keys: 'skincare_suggestions' and 'lifestyle_suggestions' (lists of strings)."),
+            ("human", "Generate recommendations.")
+        ])
+        parser = JsonOutputParser()
+        chain = prompt | llm | parser
+        suggestions = chain.invoke({"ml_outputs": json.dumps(ml_summary)})
         
         elapsed = time.time() - start
         logger.info(f"[Groq Task {self.request.id}] ✅ Groq completed in {elapsed:.1f}s")
