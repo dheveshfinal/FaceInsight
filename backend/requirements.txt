@@ -77,3 +77,4 @@ langgraph
 qdrant-client
 fastembed==0.3.6
 
+cloudinary==1.40.0

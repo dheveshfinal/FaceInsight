@@ -78,14 +78,17 @@ def run_analysis_pipeline(self, job_id: int, image_filename: str) -> dict:
         self.update_state(state='PROGRESS', meta={'progress': 0.05, 'stage': 'Starting analysis…'})
 
         # ── 1. Load image ──────────────────────────────────────
-        upload_dir = os.environ.get("UPLOAD_DIR", "/app/media/uploads")
-        image_path = Path(upload_dir) / image_filename
-        if not image_path.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
-
-        logger.info(f"[Task {self.request.id}] Loading image: {image_path}")
+        logger.info(f"[Task {self.request.id}] Downloading image from Cloudinary: {image_filename}")
+        import urllib.request
+        from io import BytesIO
         from PIL import Image as PILImage
-        pil_img = PILImage.open(image_path).convert("RGB")
+        
+        # Download the image from the Cloudinary URL
+        req = urllib.request.Request(image_filename, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            image_data = response.read()
+            
+        pil_img = PILImage.open(BytesIO(image_data)).convert("RGB")
         width, height = pil_img.size
 
         # Update progress

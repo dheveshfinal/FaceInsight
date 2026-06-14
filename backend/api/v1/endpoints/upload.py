@@ -32,20 +32,14 @@ async def upload_image(
         raise HTTPException(status_code=400, detail="File must be an image")
 
     try:
-        # Validate + save image
+        # Validate + save image to Cloudinary
         upload_svc = UploadService()
-        stored_filename = await upload_svc.save_image(
+        image_info = await upload_svc.save_image(
             file=file,
             user_id=current_user.id,
         )
-        logger.info(f"Image saved: {stored_filename} for user {current_user.id}")
+        logger.info(f"Image uploaded to Cloudinary: {image_info['url']} for user {current_user.id}")
 
-        # Get file metadata
-        import os
-        from core.config import get_settings
-        settings = get_settings()
-        upload_path = os.path.join(settings.UPLOAD_DIR, stored_filename)
-        file_size_bytes = os.path.getsize(upload_path)
         mime_type = file.content_type or "image/jpeg"
 
         # Create AnalysisJob
@@ -60,11 +54,11 @@ async def upload_image(
         # Create AnalysisImage link
         image = AnalysisImage(
             job_id=job_id,
-            stored_filename=stored_filename,
+            stored_filename=image_info["filename"],  # Cloudinary public_id
             original_filename=file.filename or "unknown",
-            upload_path=upload_path,
+            upload_path=image_info["url"],           # Cloudinary secure_url
             mime_type=mime_type,
-            file_size_bytes=file_size_bytes,
+            file_size_bytes=image_info["size_bytes"],
         )
         db.add(image)
         await db.commit()
@@ -73,7 +67,7 @@ async def upload_image(
         ml_svc = MLService()
         await ml_svc.queue_analysis_task(
             job_id=job_id,
-            image_filename=stored_filename,
+            image_filename=image_info["url"],
         )
         logger.info(f"Queued ML task for job {job_id}")
 
