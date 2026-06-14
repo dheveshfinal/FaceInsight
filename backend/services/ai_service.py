@@ -58,15 +58,6 @@ class AIService:
         # Initialize HuggingFace Sentence Transformer lazily to save memory on startup
         self.embeddings_model = None
         
-    def _get_embeddings(self):
-        if self.embeddings_model is None:
-            try:
-                logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-                self.embeddings_model = TextEmbedding(EMBEDDING_MODEL)
-                logger.info("✅ Embeddings loaded successfully")
-            except Exception as e:
-                logger.error(f"Failed to load embeddings model: {e}")
-        return self.embeddings_model
         # Initialize Qdrant Client
         try:
             # Support both local Qdrant and Qdrant Cloud
@@ -84,6 +75,16 @@ class AIService:
 
         # Build the RAG Graph
         self.rag_graph = self._build_rag_graph()
+
+    def _get_embeddings(self):
+        if self.embeddings_model is None:
+            try:
+                logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
+                self.embeddings_model = TextEmbedding(EMBEDDING_MODEL)
+                logger.info("✅ Embeddings loaded successfully")
+            except Exception as e:
+                logger.error(f"Failed to load embeddings model: {e}")
+        return self.embeddings_model
 
     def _init_collection(self):
         """Initialize or create Qdrant collection for recommendations."""
