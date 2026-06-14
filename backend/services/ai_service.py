@@ -55,14 +55,18 @@ class AIService:
             logger.warning("GROQ_API_KEY is not set. AIService will not function properly.")
             self.llm = None
             
-        # Initialize HuggingFace Sentence Transformer (free, no API key)
-        try:
-            logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-            self.embeddings_model = TextEmbedding(EMBEDDING_MODEL)
-            logger.info("✅ Embeddings loaded successfully")
-        except Exception as e:
-            logger.error(f"Failed to load embeddings model: {e}")
-            self.embeddings_model = None
+        # Initialize HuggingFace Sentence Transformer lazily to save memory on startup
+        self.embeddings_model = None
+        
+    def _get_embeddings(self):
+        if self.embeddings_model is None:
+            try:
+                logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
+                self.embeddings_model = TextEmbedding(EMBEDDING_MODEL)
+                logger.info("✅ Embeddings loaded successfully")
+            except Exception as e:
+                logger.error(f"Failed to load embeddings model: {e}")
+        return self.embeddings_model
         # Initialize Qdrant Client
         try:
             # Support both local Qdrant and Qdrant Cloud
@@ -132,7 +136,8 @@ class AIService:
 
     def _store_recommendation(self, suggestions: Dict[str, Any], ml_outputs: Dict[str, Any], user_id: Optional[int] = None, session_id: Optional[str] = None):
         """Store AI-generated recommendations in Qdrant with metadata."""
-        if not self.qdrant or not self.embeddings_model:
+        embeddings_model = self._get_embeddings()
+        if not self.qdrant or not embeddings_model:
             logger.warning("Cannot store recommendation: Qdrant or embeddings not available")
             return
         
@@ -141,7 +146,7 @@ class AIService:
             rec_text = " ".join(suggestions.get("skincare_suggestions", [])) + " " + " ".join(suggestions.get("lifestyle_suggestions", []))
             
             # Generate embedding using HuggingFace
-            embedding = list(self.embeddings_model.embed([rec_text]))[0].tolist()
+            embedding = list(embeddings_model.embed([rec_text]))[0].tolist()
             
             # Create unique point ID
             point_id = int(uuid.uuid4().int % (2**63))
@@ -184,9 +189,10 @@ class AIService:
         
         context = ""
         
-        if self.qdrant and self.embeddings_model:
+        embeddings_model = self._get_embeddings()
+        if self.qdrant and embeddings_model:
             try:
-                question_embedding = list(self.embeddings_model.embed([question]))[0].tolist()
+                question_embedding = list(embeddings_model.embed([question]))[0].tolist()
                 
                 if user_id:
                     filter_condition = Filter(
