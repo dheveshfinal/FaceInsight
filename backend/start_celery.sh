@@ -5,6 +5,9 @@ echo "=========================================="
 echo "🚀 Starting Celery Worker (Free Tier Mode)"
 echo "=========================================="
 
+# Export PYTHONPATH to ensure Python can find the 'database' module
+export PYTHONPATH=$(pwd)
+
 # Start Celery worker in background
 echo "🚀 Starting Celery..."
 celery -A workers.celery_app worker -Q celery,ml_queue,default --loglevel=info --concurrency=1 --max-tasks-per-child=10 &
