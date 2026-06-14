@@ -296,6 +296,20 @@ class _AnalysisLoadingPageState extends State<AnalysisLoadingPage>
                             ),
                           ),
                         ),
+
+                        const SizedBox(height: 24),
+
+                        // ── Free Tier Notice ────────────────
+                        const Text(
+                          'Note: Analysis may take 1-2 minutes to complete\nas the AI backend wakes up from sleep.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            height: 1.4,
+                          ),
+                        ),
                       ],
                   ],
                 ),
