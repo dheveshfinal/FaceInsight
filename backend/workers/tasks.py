@@ -15,8 +15,14 @@ import math
 import asyncio
 import time
 import json
+import sys
 from pathlib import Path
 from typing import Optional
+
+# Ensure backend root is in PYTHONPATH
+backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_root not in sys.path:
+    sys.path.insert(0, backend_root)
 
 from loguru import logger
 from celery import states
@@ -429,6 +435,7 @@ def generate_groq_recommendations(self, job_id: int, ml_summary_json: str):
     """
     logger.info(f"[Groq Task {self.request.id}] Starting for job_id={job_id}")
     
+    from database.session import SessionLocal
     db = SessionLocal()
     try:
         import json
