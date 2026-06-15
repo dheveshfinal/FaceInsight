@@ -67,7 +67,7 @@ class AnalysisService {
     ));
 
     final streamed = await request.send().timeout(
-      const Duration(seconds: 60),
+      AppConstants.httpTimeout,
       onTimeout: () => throw Exception('Upload timed out'),
     );
     final body = await streamed.stream.bytesToString();
