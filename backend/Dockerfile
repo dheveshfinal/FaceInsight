@@ -37,8 +37,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # networking
     curl \
     wget \
-    # process supervisor (manages uvicorn + celery independently)
-    supervisor \
     # clean up
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -90,12 +88,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application source
 COPY . .
 
-# Make scripts executable
+# Make start script executable
 RUN chmod +x start.sh
-
-# Ensure supervisord.conf is in place (already copied via COPY . .)
-# but create a symlink to /etc/supervisor/conf.d as fallback
-RUN mkdir -p /etc/supervisor/conf.d
 
 # Create media directories
 RUN mkdir -p /app/media/uploads /app/media/processed /app/ml/weights
